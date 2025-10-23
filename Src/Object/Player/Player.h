@@ -48,4 +48,18 @@ private:
 	// ローカル角度
 	VECTOR localAngles_;
 
+	// サイコロモデル情報
+	int diceModelId_;
+
+	VECTOR dicePos_;
+	VECTOR diceAngles_;
+	VECTOR diceScales_;
+
+	VECTOR diceLocalPos_;
+	VECTOR diceLocalAngles_;
+
+	void InitDice(void);
+	void SyncDice(void);
+
+
 };

@@ -3,6 +3,7 @@
 
 #include "../../Application.h"
 #include "../../Utility/AsoUtility.h"
+#include "../../Utility/MatrixUtility.h"
 
 #include "../../Common/AnimationController.h"
 
@@ -24,20 +25,7 @@ void Player::Init(void)
 	angles_ = { 0.f, 0.f, 0.f };
 	localAngles_ = { 0.f, AsoUtility::Deg2RadF(180.f), 0.f };
 
-	// モデルの回転行列
-	MATRIX mat = MGetIdent();
-	mat = MMult(mat, MGetRotX(angles_.x));
-	mat = MMult(mat, MGetRotY(angles_.y));
-	mat = MMult(mat, MGetRotZ(angles_.z));
-
-	// モデルのローカル回転行列
-	MATRIX localMat = MGetIdent();
-	localMat = MMult(localMat, MGetRotX(localAngles_.x));
-	localMat = MMult(localMat, MGetRotY(localAngles_.y));
-	localMat = MMult(localMat, MGetRotZ(localAngles_.z));
-
-	// 行列の合成(子, 親と指定すると親⇒子の順に適用される)
-	mat = MMult(localMat, mat);
+	MATRIX mat = MatrixUtility::Multiplication(localAngles_, angles_);
 
 	// 回転行列をモデルに反映
 	MV1SetRotationMatrix(modelId_, mat);
@@ -55,13 +43,28 @@ void Player::Init(void)
 
 	// 初期アニメーションの再生
 	animationController_->Play(static_cast<int>(ANIM_TYPE::IDLE));
+
+	InitDice();
+
 }
 
 void Player::Update(void)
 {
 
+	// モデルのY軸回転
+	angles_.y += AsoUtility::Deg2RadF(0.1f);
+
+	MATRIX mat = MatrixUtility::Multiplication(localAngles_, angles_);
+
+	// 回転行列をモデルに反映
+	MV1SetRotationMatrix(modelId_, mat);
+
 	// アニメーションの更新
 	animationController_->Update();
+
+	// サイコロのZ軸回転
+	diceAngles_.z += 0.01f;
+	SyncDice();
 
 }
 
@@ -71,6 +74,17 @@ void Player::Draw(void)
 	// プレイヤーの描画
 	MV1DrawModel(modelId_);
 
+	// サイコロの描画
+	MV1DrawModel(diceModelId_);
+
+	DrawFormatString(
+		0, 50, 0xffffff, 
+		"キャラ角度　: (%.1f, %.1f, %.1f)",
+		AsoUtility::Rad2DegF(angles_.x),
+		AsoUtility::Rad2DegF(angles_.y),
+		AsoUtility::Rad2DegF(angles_.z)
+	);
+
 }
 
 void Player::Release(void)
@@ -79,5 +93,51 @@ void Player::Release(void)
 	// モデルの解放
 	MV1DeleteModel(modelId_);
 	delete animationController_;
+
+	MV1DeleteModel(diceModelId_);
+
+}
+
+void Player::InitDice(void)
+{
+
+	diceModelId_ = MV1LoadModel((Application::PATH_MODEL + "Dice.mv1").c_str());
+
+	diceScales_ = { 0.1f, 0.1f, 0.1f };
+	MV1SetScale(diceModelId_, diceScales_);
+
+	diceAngles_ = { AsoUtility::VECTOR_ZERO };
+	diceLocalAngles_ = { AsoUtility::VECTOR_ZERO };
+
+	// プレイヤーからの相対座標
+	diceLocalPos_ = { 200.f, 100.f, 0.f };
+
+	SyncDice();
+
+}
+
+void Player::SyncDice(void)
+{
+
+	// 行列の合成
+	MATRIX selfMat = MatrixUtility::Multiplication(diceLocalAngles_, diceAngles_);
+
+	// 親の回転行列
+	MATRIX parentMat = MatrixUtility::GetMatrixRotateXYZ(angles_);
+
+	// 行列の合成
+	MATRIX mat = MatrixUtility::Multiplication(selfMat, parentMat);
+
+	// 行列を使用してモデルの角度を設定
+	MV1SetRotationMatrix(diceModelId_, mat);
+
+	// サイコロのローカル座標を親の回転行列で回転
+	VECTOR localRotPos = VTransform(diceLocalPos_, parentMat);
+
+	// サイコロのワールド座標
+	dicePos_ = VAdd(localRotPos, pos_);
+
+	// サイコロの位置を設定
+	MV1SetPosition(diceModelId_, dicePos_);
 
 }

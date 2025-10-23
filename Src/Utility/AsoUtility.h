@@ -69,6 +69,12 @@ public:
 	// Šp“x‚ÌüŒ`•âŠÔ
 	static double LerpDeg(double start, double end, double t);
 
+	// Šp“x‚ğ -ƒÎ ` +ƒÎ ‚É³‹K‰»
+	static float NormalizeAngle(float rad);
+
+	// Šp“x‚ÌüŒ`•âŠÔ(í‚ÉÅ’ZŒo˜H)
+	static float LerpAngle(float from, float to, float t);
+
 	// F‚ÌüŒ`•âŠÔ
 	static COLOR_F Lerp(const COLOR_F& start, const COLOR_F& end, float t);
 
